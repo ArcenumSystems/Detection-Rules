@@ -1,0 +1,41 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1486, T1490, T1083, T1057 | Tactic: Impact | Severity: CRITICAL |
+| Actor: BlackCat/ALPHV, LockBit 3.0, REvil |
+| WHY THIS FIRES: Full ransomware kill chain correlation — |
+| Recon → Disable Defenses → Delete Backups → Encrypt |
+| All 4 stages from same host in 30 min window = active ransomware. |
+
+| makeresults
+| append
+    [search index=windows EventCode=4688
+     earliest=-30m
+     | where match(lower(CommandLine), "(?i)(net view|nltest|arp -a|ipconfig)")
+     | eval stage="1_recon"
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode=4688
+     earliest=-30m
+     | where match(lower(CommandLine), "(?i)(Set-MpPreference.*Disable|sc stop WinDefend|taskkill.*MsMpEng)")
+     | eval stage="2_disable_defenses"
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode=4688
+     earliest=-30m
+     | where match(lower(CommandLine), "(?i)(vssadmin.*delete|wmic.*shadowcopy.*delete|bcdedit.*no)")
+     | eval stage="3_delete_backups"
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode=4663
+     earliest=-30m
+     | where match(ObjectName, "(?i)\.[a-z0-9]{5,8}$")
+     | eval stage="4_encryption"
+     | table _time, host, stage]
+| stats dc(stage) as stages_observed, values(stage) as stages by host
+| where stages_observed >= 3
+| eval risk="CRITICAL"
+| eval mitre_techniques="T1486,T1490,T1083,T1057"
+| eval actor="BlackCat/LockBit/REvil"
+| eval description="RANSOMWARE KILL CHAIN DETECTED - Multiple stages observed on host"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table host, stages_observed, stages, risk, mitre_techniques, actor, description

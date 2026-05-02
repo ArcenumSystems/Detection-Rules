@@ -1,0 +1,25 @@
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+# MITRE: T1486,T1490,T1083,T1562 | Tactic: Full Kill Chain | Severity: CRITICAL
+# Actor: BlackCat/ALPHV, LockBit 3.0
+# Platform: CrowdStrike Falcon — FQL Correlation Search
+# WHY THIS FIRES: Full ransomware kill chain from single host in 30min window
+
+event_simpleName IN (ProcessRollup2, NetworkConnectIP4)
+| eval stage=case(
+    match(CommandLine, "(?i)(net view|nltest|arp -a)"), "1_Recon",
+    match(CommandLine, "(?i)(DisableRealtimeMonitoring|sc stop WinDefend)"), "2_DisableAV",
+    match(CommandLine, "(?i)(vssadmin.*delete|shadowcopy.*delete)"), "3_DeleteBackups",
+    match(CommandLine, "(?i)(\.locked|\.encrypted|\.blackcat)"), "4_Encryption",
+    true(), null()
+)
+| where isnotnull(stage)
+| bucket timestamp span=30m
+| stats dc(stage) as StagesObserved, values(stage) as Stages by ComputerName, timestamp
+| where StagesObserved >= 3
+| eval Risk="CRITICAL"
+| eval MitreTechniques="T1486,T1490,T1083,T1562"
+| eval Actor="BlackCat/LockBit"
+| eval Description="RANSOMWARE KILL CHAIN - Multiple stages on single host"
+| eval ArcenumCopyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table timestamp, ComputerName, StagesObserved, Stages, Risk, Actor, Description

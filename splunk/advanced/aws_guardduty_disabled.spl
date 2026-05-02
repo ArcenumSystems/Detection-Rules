@@ -1,0 +1,17 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1562.008 | Tactic: Defense Evasion | Severity: CRITICAL |
+| Actor: Volt Typhoon, APT29, Scattered Spider |
+| WHY THIS FIRES: Disabling GuardDuty removes AWS threat detection |
+| entirely. Attackers do this immediately after gaining IAM access |
+| to operate undetected in cloud environment. |
+
+index=aws sourcetype=aws:cloudtrail
+| where eventName IN ("DeleteDetector","DisassociateFromMasterAccount","UpdateDetector","StopMonitoringMembers")
+| eval risk="CRITICAL"
+| eval mitre_technique="T1562.008"
+| eval actor="Volt Typhoon/APT29"
+| eval description="AWS GuardDuty disabled - cloud threat detection blind spot"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table _time, aws_account_id, userIdentity.arn, sourceIPAddress, eventName, awsRegion, risk, mitre_technique, description
+| sort -_time

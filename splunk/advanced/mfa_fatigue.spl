@@ -1,0 +1,24 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1621 | Tactic: Credential Access | Severity: CRITICAL |
+| Actor: Scattered Spider, Lapsus$ |
+| WHY THIS FIRES: Scattered Spider spams MFA push notifications until |
+| user approves from fatigue. >10 denials followed by approval from |
+| same user = active MFA fatigue attack. MGM/Caesars 2023 pattern. |
+
+index=auth sourcetype IN ("okta","azure_ad","duo")
+| eval mfa_status=coalesce(outcome.result, status, result)
+| eval user=coalesce(actor.alternateId, userPrincipalName, username)
+| bucket _time span=10m
+| stats
+    count(eval(match(mfa_status,"(?i)(denied|rejected|failed)"))) as denials,
+    count(eval(match(mfa_status,"(?i)(success|approved)"))) as approvals
+    by _time, user, src_ip
+| where denials > 10 AND approvals >= 1
+| eval risk="CRITICAL"
+| eval mitre_technique="T1621"
+| eval actor="Scattered Spider/Lapsus$"
+| eval description="MFA fatigue attack - excessive push denials followed by approval"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table _time, user, src_ip, denials, approvals, risk, mitre_technique, description
+| sort -_time

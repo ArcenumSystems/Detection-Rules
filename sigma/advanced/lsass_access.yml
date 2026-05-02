@@ -1,0 +1,44 @@
+title: Arcenum - LSASS Memory Access - Credential Dumping
+id: arcenum-001-lsass-access
+status: stable
+description: |
+    Detects process accessing LSASS memory for credential dumping.
+    Based on APT29/Mimikatz/Cobalt Strike documented TTPs.
+    © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+author: Pradhyumna Ghogare / Arcenum Systems
+date: 2024/01/01
+modified: 2024/01/01
+references:
+    - https://arcenum-systems.vercel.app
+    - https://attack.mitre.org/techniques/T1003/001/
+tags:
+    - attack.credential_access
+    - attack.t1003.001
+    - arcenum.critical
+logsource:
+    product: windows
+    category: process_access
+detection:
+    selection:
+        TargetImage|endswith: '\lsass.exe'
+        GrantedAccess|contains:
+            - '0x1010'
+            - '0x1410'
+            - '0x147a'
+            - '0x1fffff'
+    filter:
+        SourceImage|contains:
+            - 'MsMpEng.exe'
+            - 'WindowsDefender'
+            - 'csrss.exe'
+            - 'wininit.exe'
+    condition: selection and not filter
+falsepositives:
+    - Legitimate security tools
+    - AV/EDR products
+level: critical
+fields:
+    - SourceImage
+    - TargetImage
+    - GrantedAccess
+    - Computer

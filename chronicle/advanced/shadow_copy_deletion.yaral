@@ -1,0 +1,30 @@
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+// MITRE: T1490 | Tactic: Impact | Severity: CRITICAL
+// Actor: BlackCat/ALPHV, LockBit 3.0, REvil
+// WHY THIS FIRES: Shadow copy deletion = ransomware pre-encryption stage
+
+rule arcenum_shadow_copy_deletion {
+  meta:
+    author = "Pradhyumna Ghogare"
+    copyright = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+    description = "Shadow copy deletion - ransomware pre-encryption stage"
+    mitre_technique = "T1490"
+    severity = "CRITICAL"
+
+  events:
+    $e.metadata.event_type = "PROCESS_LAUNCH"
+    (
+      re.regex($e.target.process.command_line, `(?i)vssadmin.*delete.*shadows`) or
+      re.regex($e.target.process.command_line, `(?i)wmic.*shadowcopy.*delete`) or
+      re.regex($e.target.process.command_line, `(?i)bcdedit.*recoveryenabled.*no`) or
+      re.regex($e.target.process.command_line, `(?i)wbadmin.*delete.*catalog`)
+    )
+
+  condition:
+    $e
+
+  outcome:
+    $risk_score = 99
+    $rule_author = "Pradhyumna Ghogare / Arcenum Systems"
+}

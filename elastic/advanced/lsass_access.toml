@@ -1,0 +1,22 @@
+[rule]
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+# MITRE: T1003.001 | Tactic: Credential Access | Severity: CRITICAL
+# Actor: APT29, Mimikatz, Cobalt Strike
+# WHY THIS FIRES: Non-system process accessing LSASS = credential dump
+
+name = "Arcenum - LSASS Memory Access - Credential Dumping"
+language = "eql"
+query = '''
+process where event.action == "start" and
+process.name == "lsass.exe" and
+process.parent.name != null and
+not process.parent.name in (
+    "MsMpEng.exe", "csrss.exe", "wininit.exe",
+    "services.exe", "System", "svchost.exe"
+)
+'''
+severity = "critical"
+risk_score = 95
+tags = ["T1003.001", "Credential Access", "APT29", "Arcenum Systems"]
+author = ["Pradhyumna Ghogare / Arcenum Systems"]

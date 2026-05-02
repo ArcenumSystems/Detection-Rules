@@ -1,0 +1,20 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1003.006 | Tactic: Credential Access | Severity: CRITICAL |
+| Actor: APT29, APT28, Mimikatz lsadump::dcsync |
+| WHY THIS FIRES: DCSync abuses AD replication rights to pull all |
+| password hashes without touching LSASS. Detects non-DC machine |
+| requesting replication from Domain Controller. |
+
+index=windows EventCode=4662
+| where match(Properties, "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2")
+   OR match(Properties, "1131f6ab-9c07-11d1-f79f-00c04fc2dcd2")
+   OR match(Properties, "89e95b76-444d-4c62-991a-0facbeda640c")
+| eval risk="CRITICAL"
+| eval mitre_technique="T1003.006"
+| eval actor="APT29/APT28/Mimikatz"
+| eval description="DCSync replication rights exercised - full AD credential dump"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| where NOT match(SubjectUserName, "(?i)(\$$)")
+| table _time, host, SubjectUserName, SubjectDomainName, ObjectName, risk, mitre_technique, actor, description
+| sort -_time

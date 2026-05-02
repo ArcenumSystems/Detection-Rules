@@ -1,0 +1,20 @@
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+# MITRE: T1003.001 | Tactic: Credential Access | Severity: CRITICAL
+# Actor: APT29, Mimikatz, Cobalt Strike
+# Platform: CrowdStrike Falcon — Custom IOA Rule / Event Search (FQL)
+# WHY THIS FIRES: LSASS memory access from unexpected process = credential dump
+
+# CrowdStrike Falcon Query Language (FQL) — Investigate → Event Search
+event_simpleName=ProcessRollup2
+| TargetProcessName="*lsass.exe"
+| SourceProcessName!="MsMpEng.exe"
+| SourceProcessName!="csrss.exe"
+| SourceProcessName!="wininit.exe"
+| GrantedAccess IN ("0x1010","0x1410","0x147a","0x1fffff")
+| eval Risk="CRITICAL"
+| eval MitreTechnique="T1003.001"
+| eval Actor="APT29/Mimikatz"
+| eval Description="LSASS memory access - credential dumping attempt"
+| eval ArcenumCopyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table timestamp, ComputerName, UserName, SourceProcessName, TargetProcessName, GrantedAccess, Risk, MitreTechnique, Actor

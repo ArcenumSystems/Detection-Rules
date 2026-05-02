@@ -1,0 +1,19 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1562.001 | Tactic: Defense Evasion | Severity: CRITICAL |
+| Actor: APT29, Cobalt Strike, Metasploit |
+| WHY THIS FIRES: AMSI bypass patches AmsiScanBuffer in memory to |
+| blind AV from scanning PowerShell. Script block logging captures |
+| the bypass attempt before execution. |
+
+index=windows EventCode=4104
+| where match(ScriptBlockText, "(?i)(AmsiScanBuffer|AmsiInitialize|amsiContext|amsiSession)")
+   OR match(ScriptBlockText, "(?i)(amsi.*bypass|amsi.*patch|amsi.*disable)")
+   OR match(ScriptBlockText, "(?i)(Reflection\.Assembly.*VirtualProtect|WriteProcessMemory.*amsi)")
+| eval risk="CRITICAL"
+| eval mitre_technique="T1562.001"
+| eval actor="APT29/CobaltStrike"
+| eval description="AMSI bypass technique in PowerShell script block"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table _time, host, UserID, ScriptBlockText, risk, mitre_technique, description
+| sort -_time

@@ -1,0 +1,20 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1558.003 | Tactic: Credential Access | Severity: HIGH |
+| Actor: APT29, FIN7, Scattered Spider |
+| WHY THIS FIRES: Kerberoasting requests RC4 TGS tickets for service |
+| accounts to crack offline. Bulk RC4 TGS requests from single source |
+| in short window = active Kerberoasting. |
+
+index=windows EventCode=4769 TicketEncryptionType=0x17
+| where NOT match(ServiceName, "(?i)(\$$|krbtgt|^http)")
+| bucket _time span=30s
+| stats count by _time, ClientAddress, TargetUserName
+| where count > 5
+| eval risk="HIGH"
+| eval mitre_technique="T1558.003"
+| eval actor="APT29/FIN7/Scattered Spider"
+| eval description="Kerberoasting - bulk RC4 TGS requests for service accounts"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table _time, ClientAddress, TargetUserName, count, risk, mitre_technique, description
+| sort -_time

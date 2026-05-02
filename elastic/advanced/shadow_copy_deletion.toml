@@ -1,0 +1,22 @@
+[rule]
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+# MITRE: T1490 | Tactic: Impact | Severity: CRITICAL
+# Actor: BlackCat/ALPHV, LockBit 3.0, REvil
+# WHY THIS FIRES: Shadow copy deletion = ransomware pre-encryption stage
+
+name = "Arcenum - Shadow Copy Deletion - Ransomware Pre-Encryption"
+language = "eql"
+query = '''
+process where event.action == "start" and
+(
+    (process.name == "vssadmin.exe" and process.args : ("delete", "shadows")) or
+    (process.name == "wmic.exe" and process.args : ("shadowcopy", "delete")) or
+    (process.name == "bcdedit.exe" and process.args : ("recoveryenabled", "no")) or
+    (process.name == "wbadmin.exe" and process.args : ("delete", "catalog"))
+)
+'''
+severity = "critical"
+risk_score = 99
+tags = ["T1490", "Impact", "BlackCat", "LockBit", "Arcenum Systems"]
+author = ["Pradhyumna Ghogare / Arcenum Systems"]

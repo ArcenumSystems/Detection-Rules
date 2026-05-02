@@ -1,0 +1,27 @@
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+// MITRE: T1621 | Tactic: Credential Access | Severity: CRITICAL
+// Actor: Scattered Spider, Lapsus$
+// WHY THIS FIRES: >10 MFA denials + 1 approval from same user = MFA fatigue
+
+SigninLogs
+| where ResultType != "0"
+| where AuthenticationDetails has "MFA"
+| summarize
+    Denials = countif(ResultType != "0"),
+    Approvals = countif(ResultType == "0"),
+    FirstAttempt = min(TimeGenerated),
+    LastAttempt = max(TimeGenerated),
+    IPAddresses = make_set(IPAddress)
+    by UserPrincipalName, bin(TimeGenerated, 10m)
+| where Denials > 10 and Approvals >= 1
+| extend
+    Risk = "CRITICAL",
+    MitreTechnique = "T1621",
+    Actor = "Scattered Spider/Lapsus$",
+    Description = "MFA fatigue attack - push spam then approval",
+    ArcenumCopyright = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| project
+    TimeGenerated, UserPrincipalName, Denials, Approvals,
+    IPAddresses, Risk, MitreTechnique, Actor, Description
+| order by TimeGenerated desc

@@ -1,0 +1,49 @@
+title: Arcenum - Shadow Copy Deletion - Ransomware Pre-Encryption
+id: arcenum-002-shadow-copy-delete
+status: stable
+description: |
+    Detects shadow copy deletion commands used by ransomware before encryption.
+    Covers BlackCat/ALPHV, LockBit 3.0, REvil documented command patterns.
+    © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+author: Pradhyumna Ghogare / Arcenum Systems
+date: 2024/01/01
+references:
+    - https://arcenum-systems.vercel.app
+    - https://attack.mitre.org/techniques/T1490/
+tags:
+    - attack.impact
+    - attack.t1490
+    - arcenum.critical
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection_vssadmin:
+        CommandLine|contains|all:
+            - 'vssadmin'
+            - 'delete'
+            - 'shadows'
+    selection_wmic:
+        CommandLine|contains|all:
+            - 'wmic'
+            - 'shadowcopy'
+            - 'delete'
+    selection_bcdedit:
+        CommandLine|contains|all:
+            - 'bcdedit'
+            - 'recoveryenabled'
+            - 'no'
+    selection_wbadmin:
+        CommandLine|contains|all:
+            - 'wbadmin'
+            - 'delete'
+            - 'catalog'
+    condition: 1 of selection_*
+falsepositives:
+    - Legitimate backup software cleanup
+level: critical
+fields:
+    - CommandLine
+    - ParentImage
+    - User
+    - Computer

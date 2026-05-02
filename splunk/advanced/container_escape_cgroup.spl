@@ -1,0 +1,18 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1611 | Tactic: Privilege Escalation | Severity: CRITICAL |
+| Actor: TeamTNT, Lazarus Group, APT41 |
+| WHY THIS FIRES: cgroup release_agent escape (CVE-2022-0492) writes |
+| malicious command to release_agent file which executes as root on |
+| host when cgroup is released. Classic container breakout. |
+
+index=linux sourcetype IN ("syslog","auditd")
+| where match(_raw, "(?i)(cgroup.*release_agent|notify_on_release.*1|/sys/fs/cgroup.*cmd)")
+   OR match(_raw, "(?i)(unshare.*--mount|nsenter.*--target 1|nsenter.*/proc/1/ns)")
+| eval risk="CRITICAL"
+| eval mitre_technique="T1611"
+| eval actor="TeamTNT/Lazarus/APT41"
+| eval description="Container escape via cgroup release_agent - host OS breakout"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table _time, host, user, _raw, risk, mitre_technique, description
+| sort -_time

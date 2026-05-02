@@ -1,0 +1,23 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1071.004 | Tactic: Command and Control | Severity: HIGH |
+| Actor: FIN7, APT29, Lazarus Group |
+| WHY THIS FIRES: DNS tunneling encodes C2 traffic in DNS queries |
+| to bypass firewall inspection. High entropy subdomains + TXT |
+| queries + high volume from single host = active tunnel. |
+
+index=dns
+| eval query_len=len(query)
+| eval entropy=abs(log(1/query_len))
+| where query_len > 50
+   OR match(record_type, "TXT")
+| bucket _time span=1m
+| stats count, dc(query) as unique_queries, avg(query_len) as avg_len by _time, src_ip
+| where count > 30 OR avg_len > 40
+| eval risk="HIGH"
+| eval mitre_technique="T1071.004"
+| eval actor="FIN7/APT29/Lazarus"
+| eval description="DNS tunneling - high entropy queries or excessive TXT records"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table _time, src_ip, count, unique_queries, avg_len, risk, mitre_technique, description
+| sort -_time

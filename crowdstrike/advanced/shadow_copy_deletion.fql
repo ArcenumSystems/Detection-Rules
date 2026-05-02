@@ -1,0 +1,18 @@
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+# MITRE: T1490 | Tactic: Impact | Severity: CRITICAL
+# Actor: BlackCat/ALPHV, LockBit 3.0, REvil
+# Platform: CrowdStrike Falcon — FQL Event Search
+# WHY THIS FIRES: VSS deletion = ransomware about to encrypt
+
+event_simpleName=ProcessRollup2
+| CommandLine="*vssadmin*delete*shadows*"
+  OR CommandLine="*wmic*shadowcopy*delete*"
+  OR CommandLine="*bcdedit*recoveryenabled*no*"
+  OR CommandLine="*wbadmin*delete*catalog*"
+| eval Risk="CRITICAL"
+| eval MitreTechnique="T1490"
+| eval Actor="BlackCat/LockBit/REvil"
+| eval Description="Shadow copy deletion - ransomware pre-encryption"
+| eval ArcenumCopyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table timestamp, ComputerName, UserName, FileName, CommandLine, Risk, MitreTechnique, Actor

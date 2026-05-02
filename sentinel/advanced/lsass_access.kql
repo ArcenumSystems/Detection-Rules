@@ -1,0 +1,24 @@
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+// MITRE: T1003.001 | Tactic: Credential Access | Severity: CRITICAL
+// Actor: APT29, Mimikatz, Cobalt Strike
+// WHY THIS FIRES: LSASS memory access from non-system process = credential dump
+
+SecurityEvent
+| where EventID == 10
+| where TargetImage has "lsass.exe"
+| where not(SourceImage has_any (
+    "MsMpEng.exe", "WindowsDefender", "csrss.exe",
+    "wininit.exe", "services.exe", "System"
+))
+| extend
+    Risk = "CRITICAL",
+    MitreTechnique = "T1003.001",
+    Actor = "APT29/Mimikatz",
+    Description = "LSASS process memory access - credential dumping attempt",
+    ArcenumCopyright = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| project
+    TimeGenerated, Computer, Account,
+    SourceImage, TargetImage, GrantedAccess,
+    Risk, MitreTechnique, Actor, Description
+| order by TimeGenerated desc

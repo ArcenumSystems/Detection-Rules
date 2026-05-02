@@ -1,0 +1,21 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1490 | Tactic: Impact | Severity: CRITICAL |
+| Actor: BlackCat/ALPHV, LockBit 3.0, REvil |
+| WHY THIS FIRES: Ransomware deletes shadow copies before encryption |
+| to prevent recovery. This is the clearest pre-ransomware signal. |
+
+index=windows EventCode=4688
+| eval cmdline=lower(CommandLine)
+| where match(cmdline, "vssadmin.*delete.*shadows")
+   OR match(cmdline, "wmic.*shadowcopy.*delete")
+   OR match(cmdline, "bcdedit.*recoveryenabled.*no")
+   OR match(cmdline, "wbadmin.*delete.*catalog")
+   OR match(cmdline, "diskshadow.*delete")
+| eval risk="CRITICAL"
+| eval mitre_technique="T1490"
+| eval actor="BlackCat/LockBit/REvil"
+| eval description="Shadow copy deletion - ransomware pre-encryption stage"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table _time, host, user, cmdline, risk, mitre_technique, actor, description
+| sort -_time

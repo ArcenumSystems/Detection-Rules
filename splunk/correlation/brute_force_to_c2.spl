@@ -1,0 +1,41 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1110,T1078,T1059,T1071 | Tactic: Full Chain | Severity: CRITICAL |
+| Actor: Scattered Spider, FIN7, Generic APT |
+| WHY THIS FIRES: Brute force → Successful login → Process execution → |
+| Outbound C2 connection. All 4 from same host in 20 min = |
+| compromised host actively beaconing to C2. |
+
+| makeresults
+| append
+    [search index=windows EventCode=4625
+     earliest=-20m
+     | stats count by src_ip, TargetUserName
+     | where count > 10
+     | eval stage="1_brute_force", host=src_ip
+     | table host, stage, TargetUserName]
+| append
+    [search index=windows EventCode=4624
+     earliest=-20m
+     | eval stage="2_successful_login"
+     | table _time, host, stage, TargetUserName, IpAddress]
+| append
+    [search index=windows EventCode=4688
+     earliest=-20m
+     | where match(NewProcessName, "(?i)(cmd\.exe|powershell\.exe|wscript\.exe)")
+     | eval stage="3_process_execution"
+     | table _time, host, stage]
+| append
+    [search index=network
+     earliest=-20m
+     | where bytes_out > 1000
+     | eval stage="4_c2_beacon"
+     | table _time, host, stage, dest_ip, dest_port]
+| stats dc(stage) as stages_observed, values(stage) as stages by host
+| where stages_observed >= 3
+| eval risk="CRITICAL"
+| eval mitre_techniques="T1110,T1078,T1059,T1071"
+| eval actor="Scattered Spider/FIN7"
+| eval description="BRUTE FORCE TO C2 CHAIN - Account compromised and beaconing"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table host, stages_observed, stages, risk, actor, mitre_techniques, description

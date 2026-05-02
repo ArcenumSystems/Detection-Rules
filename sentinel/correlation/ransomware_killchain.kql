@@ -1,0 +1,48 @@
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+// MITRE: T1486,T1490,T1083,T1562 | Tactic: Full Kill Chain | Severity: CRITICAL
+// Actor: BlackCat/ALPHV, LockBit 3.0, REvil
+// WHY THIS FIRES: Correlates full ransomware chain across 4 stages
+
+let TimeWindow = 30m;
+let Recon = SecurityEvent
+    | where TimeGenerated > ago(TimeWindow)
+    | where EventID == 4688
+    | where CommandLine has_any ("net view","nltest","arp -a","ipconfig /all")
+    | extend Stage = "1_Recon"
+    | project Computer, Stage, TimeGenerated;
+let DisableDefenses = SecurityEvent
+    | where TimeGenerated > ago(TimeWindow)
+    | where EventID == 4688
+    | where CommandLine has_any ("DisableRealtimeMonitoring","sc stop WinDefend","taskkill")
+    | extend Stage = "2_DisableDefenses"
+    | project Computer, Stage, TimeGenerated;
+let DeleteBackups = SecurityEvent
+    | where TimeGenerated > ago(TimeWindow)
+    | where EventID == 4688
+    | where CommandLine has_any ("vssadmin delete","shadowcopy delete","bcdedit /set")
+    | extend Stage = "3_DeleteBackups"
+    | project Computer, Stage, TimeGenerated;
+let Encryption = SecurityEvent
+    | where TimeGenerated > ago(TimeWindow)
+    | where EventID == 4663
+    | summarize FileCount = count() by Computer, bin(TimeGenerated, 1m)
+    | where FileCount > 100
+    | extend Stage = "4_Encryption"
+    | project Computer, Stage, TimeGenerated;
+union Recon, DisableDefenses, DeleteBackups, Encryption
+| summarize
+    StagesObserved = dcount(Stage),
+    Stages = make_set(Stage),
+    FirstSeen = min(TimeGenerated),
+    LastSeen = max(TimeGenerated)
+    by Computer
+| where StagesObserved >= 3
+| extend
+    Risk = "CRITICAL",
+    MitreTechniques = "T1486,T1490,T1083,T1562",
+    Actor = "BlackCat/LockBit/REvil",
+    Description = "RANSOMWARE KILL CHAIN - Multiple stages detected on host",
+    ArcenumCopyright = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| project Computer, StagesObserved, Stages, FirstSeen, LastSeen,
+    Risk, MitreTechniques, Actor, Description

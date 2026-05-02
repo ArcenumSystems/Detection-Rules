@@ -1,0 +1,39 @@
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+// MITRE: T1486,T1490,T1562 | Tactic: Full Kill Chain | Severity: CRITICAL
+// Actor: BlackCat/ALPHV, LockBit 3.0
+// WHY THIS FIRES: Disable AV → Delete backups → Encrypt = ransomware chain
+
+rule arcenum_ransomware_killchain {
+  meta:
+    author = "Pradhyumna Ghogare"
+    copyright = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+    description = "Full ransomware kill chain correlation"
+    mitre_technique = "T1486,T1490,T1562"
+    severity = "CRITICAL"
+
+  events:
+    $disable_av.metadata.event_type = "PROCESS_LAUNCH"
+    re.regex($disable_av.target.process.command_line,
+        `(?i)(DisableRealtimeMonitoring|sc stop WinDefend|taskkill.*MsMpEng)`)
+    $disable_av.principal.hostname = $host
+
+    $delete_backup.metadata.event_type = "PROCESS_LAUNCH"
+    re.regex($delete_backup.target.process.command_line,
+        `(?i)(vssadmin.*delete|shadowcopy.*delete|bcdedit.*no)`)
+    $delete_backup.principal.hostname = $host
+
+    $encrypt.metadata.event_type = "FILE_MODIFICATION"
+    re.regex($encrypt.target.file.full_path, `(?i)\.[a-z0-9]{5,8}$`)
+    $encrypt.principal.hostname = $host
+
+  match:
+    $host over 30m
+
+  condition:
+    $disable_av and $delete_backup and $encrypt
+
+  outcome:
+    $risk_score = 100
+    $rule_author = "Pradhyumna Ghogare / Arcenum Systems"
+}

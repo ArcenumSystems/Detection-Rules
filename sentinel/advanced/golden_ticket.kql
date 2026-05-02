@@ -1,0 +1,21 @@
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0
+// MITRE: T1558.001 | Tactic: Credential Access | Severity: CRITICAL
+// Actor: APT29, APT28, FIN7
+// WHY THIS FIRES: RC4 (0x17) TGT from modern host = forged Golden Ticket
+
+SecurityEvent
+| where EventID == 4768
+| where TicketEncryptionType == "0x17"
+| where not(ServiceName endswith "$")
+| extend
+    Risk = "CRITICAL",
+    MitreTechnique = "T1558.001",
+    Actor = "APT29/APT28",
+    Description = "Golden Ticket - forged Kerberos TGT with RC4 encryption",
+    ArcenumCopyright = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| project
+    TimeGenerated, Computer, TargetUserName,
+    IpAddress, ServiceName, TicketEncryptionType,
+    Risk, MitreTechnique, Actor, Description
+| order by TimeGenerated desc

@@ -1,0 +1,47 @@
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC |
+| Author: Pradhyumna Ghogare | Project: Arcenum Systems Detection Engine v3.0 |
+| MITRE: T1566,T1059,T1003,T1021,T1041 | Tactic: Full Kill Chain | Severity: CRITICAL |
+| Actor: APT29 (Cozy Bear) — SolarWinds, WellMess, NOBELIUM |
+| WHY THIS FIRES: APT29 specific kill chain: |
+| Phishing → PowerShell dropper → LSASS dump → Lateral move → Exfil |
+| Correlates 5 stages from same host in 2 hour window. |
+
+| makeresults
+| append
+    [search index=windows EventCode=4104
+     earliest=-2h
+     | where match(ScriptBlockText, "(?i)(IEX|Invoke-Expression|DownloadString|EncodedCommand)")
+     | eval stage="1_powershell_dropper", host=Computer
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode=10
+     earliest=-2h
+     | where match(TargetImage, "(?i)lsass\.exe")
+     | eval stage="2_lsass_dump", host=Computer
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode IN (4688,7045)
+     earliest=-2h
+     | where match(lower(CommandLine), "(?i)(psexec|wmic.*process.*create|winrm)")
+     | eval stage="3_lateral_movement", host=Computer
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode=4662
+     earliest=-2h
+     | where match(Properties, "1131f6aa-9c07-11d1-f79f-00c04fc2dcd2")
+     | eval stage="4_dcsync", host=Computer
+     | table _time, host, stage]
+| append
+    [search index=network
+     earliest=-2h
+     | where bytes_out > 50000000
+     | eval stage="5_exfiltration"
+     | table _time, host, stage]
+| stats dc(stage) as stages_observed, values(stage) as stages by host
+| where stages_observed >= 3
+| eval risk="CRITICAL"
+| eval mitre_techniques="T1566,T1059,T1003,T1021,T1041"
+| eval actor="APT29 (Cozy Bear)"
+| eval description="APT29 KILL CHAIN - Multi-stage intrusion detected"
+| eval arcenum_copyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table host, stages_observed, stages, risk, actor, mitre_techniques, description
