@@ -119,7 +119,7 @@ sigmac -t sentinel sigma/advanced/lsass_access.yml
 Built by **Pradhyumna Ghogare** as part of **Arcenum Systems** — an independent  
 cybersecurity R&D initiative delivering enterprise-grade detection engineering.
 
-- **Website:** [arcenum-systems.vercel.app](https://arcenum-systems.vercel.app)
+
 - **GitHub:** [github.com/PradhyumnaGhogare](https://github.com/PradhyumnaGhogare)
 - **Organization:** [github.com/ArcenumSystems](https://github.com/ArcenumSystems)
 
