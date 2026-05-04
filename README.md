@@ -1,3 +1,23 @@
+<div align="center">
+  
+  <!-- Platform & Language Badges -->
+  <img src="https://img.shields.io/badge/Splunk-SPL-000000?style=for-the-badge&logo=splunk&logoColor=white" />
+  <img src="https://img.shields.io/badge/Sentinel-KQL-0078D4?style=for-the-badge&logo=microsoft&logoColor=white" />
+  <img src="https://img.shields.io/badge/CrowdStrike-FQL-CC0000?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Chronicle-YARA--L-4285F4?style=for-the-badge&logo=google&logoColor=white" />
+  <img src="https://img.shields.io/badge/Elastic-EQL-005571?style=for-the-badge&logo=elasticsearch&logoColor=white" />
+  <img src="https://img.shields.io/badge/Sigma-Universal-005E9C?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Wazuh-XML-00a8e1?style=for-the-badge" />
+
+  <br><br>
+
+  <!-- Metrics & Versioning Badges -->
+  <img src="https://img.shields.io/badge/MITRE_ATT%26CK-v14.0-e8382f?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Architecture-Advanced_%26_Correlation-22c55e?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Coverage-7_Platforms-a855f7?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Version-2.0.0-f59e0b?style=for-the-badge" />
+
+</div>
 # Arcenum Systems — Universal SIEM Detection Rules
 
 > **Author:** Pradhyumna Ghogare  
