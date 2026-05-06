@@ -1,0 +1,45 @@
+[rule]
+# ============================================================================
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author      : Pradhyumna Ghogare
+# Organization: Arcenum Systems  (github.com/ArcenumSystems)
+# Project     : Arcenum Universal Threat Detection Engine v3.0
+# MITRE       : T1558.003 | Tactic: Credential Access | Severity: HIGH
+# Actor       : APT29, FIN7, Scattered Spider
+#
+# WHY THIS FIRES:
+#   Bulk RC4 (0x17) TGS requests for service accounts in 30s window.
+#   AES tickets excluded — RC4 bulk requests = active Kerberoasting.
+#
+# TROUBLESHOOTING — IF RULE IS NOT FIRING:
+#   1. Requires Kerberos Service Ticket Operations auditing on DC.
+#   2. event.code: "4769" must be in winlog index.
+#   3. Test: GET /logs-*/_search with query: event.code: "4769"
+#   4. Enable Kerberos Service Ticket auditing via Default DC Policy GPO.
+#   5. Contact: github.com/ArcenumSystems
+# ============================================================================
+
+name         = "Arcenum - Kerberoasting - Bulk RC4 TGS Requests"
+language     = "eql"
+severity     = "high"
+risk_score   = 80
+author       = ["Pradhyumna Ghogare / Arcenum Systems"]
+tags         = ["T1558.003", "Credential Access", "APT29", "FIN7", "Arcenum Systems"]
+description  = "Bulk RC4 Kerberos TGS requests for service accounts. Offline cracking of service account hashes likely in progress."
+
+query = '''
+sequence by source.ip with maxspan=30s
+  [any where event.code == "4769" and
+   winlog.event_data.TicketEncryptionType == "0x17" and
+   not winlog.event_data.ServiceName like~ "*$" and
+   not winlog.event_data.ServiceName == "krbtgt"]  with runs=5
+'''
+
+[[rule.threat]]
+framework = "MITRE ATT&CK"
+[[rule.threat.technique]]
+id   = "T1558"
+name = "Steal or Forge Kerberos Tickets"
+[[rule.threat.technique.subtechnique]]
+id   = "T1558.003"
+name = "Kerberoasting"

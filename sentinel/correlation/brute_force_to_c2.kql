@@ -1,0 +1,69 @@
+// ============================================================================
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author      : Pradhyumna Ghogare
+// Organization: Arcenum Systems  (github.com/ArcenumSystems)
+// Project     : Arcenum Universal Threat Detection Engine v3.0
+// MITRE       : T1110,T1078,T1059,T1071 | Severity: CRITICAL
+// Actor       : Scattered Spider, FIN7, Generic APT
+// ============================================================================
+//
+// WHY THIS FIRES:
+//   Brute force > Successful login > Process execution > C2 beacon.
+//   All 4 stages from same host within 20 minutes = compromised host
+//   actively beaconing to C2 infrastructure.
+//
+// TROUBLESHOOTING — IF RULE IS NOT FIRING:
+//   1. Stage 1 needs EventID 4625 (failed logins). Stage 2 needs 4624.
+//   2. Stage 3 needs 4688 with CommandLine auditing enabled.
+//   3. Stage 4 requires network flow data in Log Analytics (e.g. NSG flow logs).
+//   4. If network data unavailable: remove Stage 4 and lower threshold to >= 2.
+//
+// CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare
+// ============================================================================
+
+let TimeWindow = 20m;
+let BruteForce = SecurityEvent
+    | where TimeGenerated > ago(TimeWindow)
+    | where EventID == 4625
+    | summarize FailCount = count() by IpAddress, TargetUserName
+    | where FailCount > 10
+    | extend Stage = "1_Brute_Force"
+    | project IpAddress, Stage;
+let SuccessLogin = SecurityEvent
+    | where TimeGenerated > ago(TimeWindow)
+    | where EventID == 4624
+    | where LogonType in (3, 10)
+    | extend Stage = "2_Successful_Login"
+    | project Computer, IpAddress, Stage, TimeGenerated;
+let ProcessExec = SecurityEvent
+    | where TimeGenerated > ago(TimeWindow)
+    | where EventID == 4688
+    | where NewProcessName has_any ("cmd.exe","powershell.exe","wscript.exe","mshta.exe")
+    | extend Stage = "3_Process_Execution"
+    | project Computer, Stage, TimeGenerated;
+let C2Beacon = CommonSecurityLog
+    | where TimeGenerated > ago(TimeWindow)
+    | where SentBytes > 1000
+    | where not(DestinationIP matches regex @"^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.).*")
+    | extend Stage = "4_C2_Beacon", Computer = DeviceName
+    | project Computer, Stage, TimeGenerated;
+union
+    (SuccessLogin | project Computer, Stage, TimeGenerated),
+    (ProcessExec  | project Computer, Stage, TimeGenerated),
+    (C2Beacon     | project Computer, Stage, TimeGenerated)
+| summarize
+    StagesObserved = dcount(Stage),
+    Stages         = make_set(Stage),
+    FirstSeen      = min(TimeGenerated),
+    LastSeen       = max(TimeGenerated)
+    by Computer
+| where StagesObserved >= 3
+| extend
+    Risk              = "CRITICAL",
+    MitreTechniques   = "T1110,T1078,T1059,T1071",
+    Actor             = "Scattered Spider / FIN7",
+    Description       = "BRUTE FORCE TO C2 CHAIN — Account compromised and actively beaconing",
+    ResolveSteps      = "1.Disable compromised account 2.Isolate host 3.Block C2 IP at firewall 4.Reset password 5.Contact github.com/ArcenumSystems",
+    ArcenumCopyright  = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| project Computer, StagesObserved, Stages, FirstSeen, LastSeen,
+    Risk, MitreTechniques, Actor, Description, ResolveSteps

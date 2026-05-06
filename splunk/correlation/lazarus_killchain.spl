@@ -1,0 +1,53 @@
+| ============================================================================ |
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC   |
+| Author      : Pradhyumna Ghogare                                             |
+| Organization: Arcenum Systems  (github.com/ArcenumSystems)                  |
+| Project     : Arcenum Universal Threat Detection Engine v3.0                 |
+| MITRE       : T1566,T1059,T1414,T1041,T1486 | Severity: CRITICAL             |
+| Actor       : Lazarus Group (DPRK) — Crypto theft, TraderTraitor              |
+| ============================================================================ |
+|                                                                               |
+| WHY THIS FIRES:                                                               |
+|   Lazarus crypto theft chain: Spearphish → Malicious doc → Clipboard hijack  |
+|   → Crypto wallet recon → Exfil. Correlates 3+ stages in 1-hour window.     |
+|                                                                               |
+| TROUBLESHOOTING — IF RULE IS NOT FIRING:                                     |
+|   1. Email logs required for Stage 1 — ingest O365/Exchange logs.           |
+|   2. Requires Script Block Logging for Stage 2 (EventCode=4104).            |
+|   3. If email logs unavailable: lower threshold to stages_observed >= 2.    |
+|   4. Add DLP/proxy logs for better Stage 4 exfil coverage.                  |
+|                                                                               |
+| CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare            |
+| ============================================================================ |
+
+| makeresults
+| append
+    [search index=email earliest=-1h
+     | where match(_raw,"(?i)(\.lnk|\.iso|\.img|password.*protected|invoice.*crypto|job.*offer)")
+     | eval stage="1_spearphish", host=recipient_host
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode=4688 earliest=-1h
+     | where match(lower(CommandLine),"(?i)(mshta|wscript|cscript|regsvr32).*http")
+     | eval stage="2_malicious_doc_exec", host=coalesce(Computer,host)
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode=4104 earliest=-1h
+     | where match(ScriptBlockText,"(?i)(Get-Clipboard|Set-Clipboard)")
+         AND match(ScriptBlockText,"(?i)(while|Start-Sleep)")
+     | eval stage="3_clipboard_hijack", host=coalesce(Computer,host)
+     | table _time, host, stage]
+| append
+    [search index=network earliest=-1h
+     | where match(dest_ip,"(?i)") AND bytes_out > 5000000
+     | eval stage="4_exfil"
+     | table _time, host, stage]
+| stats dc(stage) as stages_observed, values(stage) as stages by host
+| where stages_observed >= 3
+| eval risk            = "CRITICAL"
+| eval mitre_techniques = "T1566,T1059,T1414,T1041,T1486"
+| eval actor           = "Lazarus Group (DPRK)"
+| eval description     = "LAZARUS KILL CHAIN — Spearphish > Dropper > Clipboard hijack > Exfil"
+| eval copyright       = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| eval resolve         = "Isolate host > Check clipboard content > Verify recent crypto transactions > Hunt for mshta/wscript persistence > Contact github.com/ArcenumSystems"
+| table host, stages_observed, stages, risk, mitre_techniques, actor, description, resolve

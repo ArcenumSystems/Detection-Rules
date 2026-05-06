@@ -1,0 +1,45 @@
+| ============================================================================ |
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC   |
+| Author      : Pradhyumna Ghogare                                             |
+| Organization: Arcenum Systems  (github.com/ArcenumSystems)                  |
+| Project     : Arcenum Universal Threat Detection Engine v3.0                 |
+| MITRE       : T1486 | Tactic: Impact | Severity: CRITICAL                    |
+| Actor       : LockBit 3.0 — Fastest known ransomware encryptor               |
+| ============================================================================ |
+|                                                                               |
+| WHY THIS FIRES:                                                               |
+|   LockBit 3.0 encrypts files at 1000+ files/min using multithreading.        |
+|   File rename bursts (extension change) at >100/min from single process      |
+|   = active encryption. Also detects ransom note drop pattern.                |
+|                                                                               |
+| TROUBLESHOOTING — IF RULE IS NOT FIRING:                                     |
+|   1. Requires Object Access auditing for File System (EventCode=4663).       |
+|   2. Enable: GPO > Audit Object Access > File System > Success.              |
+|   3. Also enable SACL on sensitive directories (Documents, Shares).          |
+|   4. Test: index=windows EventCode=4663 | head 5                             |
+|   5. High volume env: increase threshold from 100 to 300 to reduce FPs.     |
+|   6. Alternative: monitor Sysmon EventCode=11 (FileCreate) for rename burst. |
+|                                                                               |
+| CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare            |
+| ============================================================================ |
+
+index=windows EventCode IN (4663, 11)
+| eval ext = replace(ObjectName, ".*\.", ".")
+| where match(ext, "(?i)\.(lockbit|lock|encrypted|[a-z0-9]{6,10})$")
+    OR match(ObjectName, "(?i)(LockBit_Readme|Restore-My-Files|RECOVER-MY-FILES|README-RANSOM)")
+| bucket _time span=1m
+| stats
+    count                as files_affected,
+    dc(ObjectName)       as unique_files,
+    values(ProcessName)  as processes,
+    dc(ProcessName)      as unique_procs
+    by _time, host, SubjectUserName
+| where files_affected > 100
+| eval risk            = "CRITICAL"
+| eval mitre_technique = "T1486"
+| eval actor           = "LockBit 3.0"
+| eval description     = "Rapid file encryption - LockBit 3.0 active encryption in progress"
+| eval copyright       = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| eval resolve         = "IMMEDIATE: Network isolate host > Kill encryption process > Do NOT reboot > Snapshot disk > Contact github.com/ArcenumSystems for IR support"
+| table _time, host, SubjectUserName, files_affected, unique_files, processes, risk, mitre_technique, actor, description, resolve
+| sort -_time

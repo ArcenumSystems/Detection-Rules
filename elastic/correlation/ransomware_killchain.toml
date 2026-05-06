@@ -1,0 +1,47 @@
+[rule]
+# ============================================================================
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author      : Pradhyumna Ghogare
+# Organization: Arcenum Systems  (github.com/ArcenumSystems)
+# Project     : Arcenum Universal Threat Detection Engine v3.0
+# MITRE       : T1486,T1490,T1562,T1083 | Severity: CRITICAL
+# Actor       : BlackCat/ALPHV, LockBit 3.0, REvil
+#
+# WHY THIS FIRES:
+#   Full ransomware chain via EQL sequence: Disable AV > Delete Backups >
+#   Encrypt files. All 3 in 30 min window from same host = active ransomware.
+#
+# TROUBLESHOOTING — IF RULE IS NOT FIRING:
+#   1. Requires EventID 4688 and 4663 with CommandLine data.
+#   2. Test each stage independently before running full sequence.
+#   3. Enable Object Access auditing for File System (for 4663).
+#   4. Increase maxspan to 1h if ransomware is slower.
+#   5. Contact: github.com/ArcenumSystems
+# ============================================================================
+
+name         = "Arcenum - Ransomware Kill Chain - Disable AV > Delete Backup > Encrypt"
+language     = "eql"
+severity     = "critical"
+risk_score   = 99
+author       = ["Pradhyumna Ghogare / Arcenum Systems"]
+tags         = ["T1486", "T1490", "T1562", "Impact", "BlackCat", "LockBit", "Arcenum Systems"]
+description  = "Full ransomware kill chain detected via EQL sequence correlation. Immediate isolation required."
+
+query = '''
+sequence by host.name with maxspan=30m
+  [process where event.code == "4688" and
+   (process.command_line like~ "*DisableRealtimeMonitoring*" or
+    process.command_line like~ "*sc stop WinDefend*" or
+    process.command_line like~ "*taskkill*MsMpEng*")]
+  [process where event.code == "4688" and
+   (process.command_line like~ "*vssadmin*delete*shadows*" or
+    process.command_line like~ "*wmic*shadowcopy*delete*" or
+    process.command_line like~ "*bcdedit*recoveryenabled*no*")]
+  [file where event.code == "4663"]
+'''
+
+[[rule.threat]]
+framework = "MITRE ATT&CK"
+[[rule.threat.technique]]
+id   = "T1486"
+name = "Data Encrypted for Impact"

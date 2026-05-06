@@ -1,0 +1,36 @@
+| ============================================================================ |
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC   |
+| Author      : Pradhyumna Ghogare                                             |
+| Organization: Arcenum Systems  (github.com/ArcenumSystems)                  |
+| Project     : Arcenum Universal Threat Detection Engine v3.0                 |
+| MITRE       : T1414 | Tactic: Collection / Impact | Severity: CRITICAL       |
+| Actor       : Lazarus Group (DPRK) — Operation AppleJeus, TraderTraitor      |
+| ============================================================================ |
+|                                                                               |
+| WHY THIS FIRES:                                                               |
+|   Lazarus hijacks clipboard to replace crypto wallet addresses with           |
+|   attacker-controlled addresses at paste time. PowerShell/WScript            |
+|   hooking Get-Clipboard / OpenClipboard APIs continuously = active thief.    |
+|                                                                               |
+| TROUBLESHOOTING — IF RULE IS NOT FIRING:                                     |
+|   1. Requires Script Block Logging (GPO: Turn on PowerShell Script Block     |
+|      Logging) and EventCode=4104 ingestion.                                  |
+|   2. Test: index=windows EventCode=4104 | head 5                             |
+|   3. If no 4104 events: enable via GPO > Admin Templates > Windows           |
+|      Components > Windows PowerShell > Turn on Script Block Logging.         |
+|   4. Also enable Sysmon EventCode=10 for API-level clipboard detection.      |
+|                                                                               |
+| CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare            |
+| ============================================================================ |
+
+index=windows EventCode=4104
+| where match(ScriptBlockText, "(?i)(Get-Clipboard|Set-Clipboard|OpenClipboard|GetClipboardData)")
+    AND match(ScriptBlockText, "(?i)(while|loop|Start-Sleep|timer|interval)")
+| eval risk            = "CRITICAL"
+| eval mitre_technique = "T1414"
+| eval actor           = "Lazarus Group (DPRK)"
+| eval description     = "Clipboard hijacking loop - crypto wallet address substitution"
+| eval copyright       = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| eval resolve         = "Kill suspicious PowerShell PID > Clear clipboard > Audit wallet addresses in recent transactions > Contact github.com/ArcenumSystems"
+| table _time, host, UserID, ScriptBlockText, risk, mitre_technique, actor, description, resolve
+| sort -_time

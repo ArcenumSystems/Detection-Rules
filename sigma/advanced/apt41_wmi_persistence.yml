@@ -1,0 +1,54 @@
+title: Arcenum - APT41 WMI Event Subscription Persistence
+id: arcenum-007-wmi-persistence-apt41
+status: stable
+description: |
+    Detects WMI Event Subscription persistence used by APT41 (Winnti/Barium)
+    to survive reboots and AV scans. Requires EventFilter + EventConsumer +
+    FilterToConsumerBinding trio (Sysmon EventID 19/20/21).
+    © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+author: Pradhyumna Ghogare / Arcenum Systems
+date: 2024/01/01
+references:
+    - https://github.com/ArcenumSystems
+    - https://github.com/PradhyumnaGhogare
+    - https://attack.mitre.org/techniques/T1546/003/
+tags:
+    - attack.persistence
+    - attack.t1546.003
+    - arcenum.critical
+    - actor.apt41
+    - actor.winnti
+logsource:
+    product: windows
+    category: wmi_event
+    definition: Requires Sysmon with WMI event subscription monitoring (EventID 19/20/21)
+detection:
+    selection_filter:
+        EventID: 19
+    selection_consumer:
+        EventID: 20
+    selection_binding:
+        EventID: 21
+    condition: selection_filter or selection_consumer or selection_binding
+    timeframe: 5m
+    condition_aggregate: count() >= 2 grouped by Computer
+falsepositives:
+    - SCCM/WMI-based management tools
+    - Monitoring agents using WMI subscriptions (add to filter by hostname)
+resolve_steps: |
+    1. Enumerate all WMI subscriptions:
+       Get-WMIObject -Namespace root\subscription -Class __EventFilter
+       Get-WMIObject -Namespace root\subscription -Class __EventConsumer
+       Get-WMIObject -Namespace root\subscription -Class __FilterToConsumerBinding
+    2. Remove malicious subscriptions:
+       Get-WMIObject ... | Remove-WMIObject
+    3. Check subscription payload for C2/backdoor commands
+    4. Isolate host and check for lateral movement
+    5. Contact: github.com/ArcenumSystems
+level: critical
+fields:
+    - EventID
+    - Computer
+    - User
+    - Name
+    - Destination

@@ -1,0 +1,66 @@
+title: Arcenum - Ransomware Kill Chain Correlation
+id: arcenum-008-ransomware-killchain
+status: stable
+description: |
+    Correlates full ransomware kill chain: Recon > Disable Defenses >
+    Delete Backups > Encrypt. All 4 stages from same host in 30 minutes
+    = active ransomware. Covers BlackCat/ALPHV, LockBit 3.0, REvil.
+    © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+author: Pradhyumna Ghogare / Arcenum Systems
+date: 2024/01/01
+references:
+    - https://github.com/ArcenumSystems
+    - https://github.com/PradhyumnaGhogare
+    - https://attack.mitre.org/techniques/T1486/
+tags:
+    - attack.impact
+    - attack.t1486
+    - attack.t1490
+    - attack.t1562
+    - arcenum.critical
+    - actor.blackcat
+    - actor.lockbit
+    - actor.revil
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    stage1_recon:
+        EventID: 4688
+        CommandLine|contains:
+            - 'net view'
+            - 'nltest'
+            - 'arp -a'
+            - 'ipconfig /all'
+    stage2_disable_av:
+        EventID: 4688
+        CommandLine|contains:
+            - 'DisableRealtimeMonitoring'
+            - 'sc stop WinDefend'
+            - 'taskkill'
+    stage3_delete_backup:
+        EventID: 4688
+        CommandLine|contains:
+            - 'vssadmin delete shadows'
+            - 'wmic shadowcopy delete'
+            - 'bcdedit /set'
+            - 'wbadmin delete catalog'
+    condition: stage1_recon and stage2_disable_av and stage3_delete_backup
+    timeframe: 30m
+    condition_aggregate: all of them grouped by Computer
+falsepositives:
+    - Legitimate backup software running cleanup + AV config change simultaneously
+resolve_steps: |
+    IMMEDIATE ACTIONS (do NOT wait):
+    1. Network isolate host IMMEDIATELY (pull cable or disable NIC via remote)
+    2. Do NOT reboot - preserves memory for forensics
+    3. Kill encryption process from another admin host
+    4. Take memory and disk snapshot before remediation
+    5. Check all network shares for encryption spread
+    6. Contact: github.com/ArcenumSystems for IR support
+level: critical
+fields:
+    - CommandLine
+    - Computer
+    - User
+    - ParentImage

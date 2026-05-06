@@ -1,0 +1,35 @@
+| ============================================================================ |
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC   |
+| Author      : Pradhyumna Ghogare                                             |
+| Organization: Arcenum Systems  (github.com/ArcenumSystems)                  |
+| Project     : Arcenum Universal Threat Detection Engine v3.0                 |
+| MITRE       : T1611 | Tactic: Privilege Escalation | Severity: CRITICAL      |
+| Actor       : TeamTNT, Lazarus Group, APT41                                  |
+| ============================================================================ |
+|                                                                               |
+| WHY THIS FIRES:                                                               |
+|   Mounting /var/run/docker.sock inside a container gives root on host.       |
+|   TeamTNT uses this to escape containers and install crypto miners or        |
+|   backdoors on host OS. Docker API calls from inside container = escape.     |
+|                                                                               |
+| TROUBLESHOOTING — IF RULE IS NOT FIRING:                                     |
+|   1. Requires container runtime audit logs (Docker daemon logs or auditd).   |
+|   2. Enable Docker log ingestion: sourcetype=docker:events in Splunk.        |
+|   3. For auditd: add audit rule: -w /var/run/docker.sock -p rwxa -k docker  |
+|   4. Test: index=linux sourcetype=docker* | head 5                           |
+|   5. Kubernetes: also monitor kube-apiserver privilegedContainer flag.       |
+|                                                                               |
+| CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare            |
+| ============================================================================ |
+
+index=linux (sourcetype IN ("syslog","auditd","docker:events","kube-audit"))
+| where match(_raw, "(?i)(docker\.sock|/var/run/docker\.sock)")
+    AND match(_raw, "(?i)(mount|bind|volume|exec|run.*--privileged|nsenter)")
+| eval risk            = "CRITICAL"
+| eval mitre_technique = "T1611"
+| eval actor           = "TeamTNT / Lazarus / APT41"
+| eval description     = "Docker socket mounted or accessed from container - host escape vector"
+| eval copyright       = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| eval resolve         = "Kill container: docker rm -f <id> > Audit docker.sock mounts: docker inspect > Rotate host credentials > Enable seccomp/AppArmor profiles > Contact github.com/ArcenumSystems"
+| table _time, host, _raw, risk, mitre_technique, actor, description, resolve
+| sort -_time

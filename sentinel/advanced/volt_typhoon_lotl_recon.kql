@@ -1,0 +1,51 @@
+// ============================================================================
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author      : Pradhyumna Ghogare
+// Organization: Arcenum Systems  (github.com/ArcenumSystems)
+// Project     : Arcenum Universal Threat Detection Engine v3.0
+// MITRE       : T1069,T1082,T1016,T1049 | Tactic: Discovery | Severity: HIGH
+// Actor       : Volt Typhoon (China) — Critical Infrastructure
+// ============================================================================
+//
+// WHY THIS FIRES:
+//   Volt Typhoon uses ONLY built-in Windows binaries — no malware dropped.
+//   Running 5+ native discovery commands (net, nltest, whoami, ipconfig)
+//   within 2 minutes from a single host = Volt Typhoon pre-positioning.
+//
+// TROUBLESHOOTING — IF RULE IS NOT FIRING:
+//   1. Requires process creation events with CommandLine: EventID 4688.
+//   2. Enable command line auditing: GPO > Audit Process Creation > include
+//      command line in process creation events.
+//   3. Test: SecurityEvent | where EventID == 4688 | where isnotempty(CommandLine) | take 5
+//   4. If CommandLine is empty: enable the GPO setting above.
+//   5. Tune ReconCommandCount threshold: lower to 3 for critical infra orgs.
+//
+// CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare
+// ============================================================================
+
+SecurityEvent
+| where EventID == 4688
+| where CommandLine has_any (
+    "net view","net group","net localgroup","nltest",
+    "whoami /all","systeminfo","ipconfig /all","arp -a",
+    "netstat -ano","tasklist","quser","wmic os","wmic nic",
+    "wmic computersystem","dsquery","ping -n 1"
+)
+| summarize
+    ReconCommandCount = count(),
+    CommandsRun       = make_set(CommandLine),
+    UniqueTools       = dcount(Process)
+    by Computer, Account, bin(TimeGenerated, 2m)
+| where ReconCommandCount > 5
+| extend
+    Risk              = "HIGH",
+    MitreTechnique    = "T1069,T1082,T1016,T1049",
+    Actor             = "Volt Typhoon (China)",
+    Description       = "LOTL discovery burst - Volt Typhoon critical infra pre-positioning",
+    ResolveSteps      = "1.Capture full process tree 2.Check if host is OT/ICS adjacent 3.Review user account for compromise 4.Network isolate if critical infra 5.Contact github.com/ArcenumSystems",
+    ArcenumCopyright  = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| project
+    TimeGenerated, Computer, Account, ReconCommandCount,
+    UniqueTools, CommandsRun,
+    Risk, MitreTechnique, Actor, Description, ResolveSteps
+| order by TimeGenerated desc

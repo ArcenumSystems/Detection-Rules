@@ -1,0 +1,53 @@
+title: Arcenum - Kerberoasting - Bulk RC4 TGS Requests
+id: arcenum-005-kerberoasting
+status: stable
+description: |
+    Detects Kerberoasting attack where RC4 (0x17) TGS tickets are requested
+    in bulk for service accounts for offline password cracking.
+    Covers Rubeus, Impacket GetUserSPNs, Mimikatz kerberos::ask.
+    © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+author: Pradhyumna Ghogare / Arcenum Systems
+date: 2024/01/01
+references:
+    - https://github.com/ArcenumSystems
+    - https://github.com/PradhyumnaGhogare
+    - https://attack.mitre.org/techniques/T1558/003/
+tags:
+    - attack.credential_access
+    - attack.t1558.003
+    - arcenum.high
+    - actor.apt29
+    - actor.fin7
+    - actor.scattered_spider
+logsource:
+    product: windows
+    service: security
+    definition: Kerberos Service Ticket Operations auditing must be enabled
+detection:
+    selection:
+        EventID: 4769
+        TicketEncryptionType: '0x17'
+    filter_known_legitimate:
+        ServiceName|endswith: '$'
+    filter_system:
+        ServiceName:
+            - 'krbtgt'
+    condition: selection and not filter_known_legitimate and not filter_system
+    timeframe: 30s
+    condition_aggregate: count() > 5 grouped by ClientAddress
+falsepositives:
+    - Legacy applications requiring RC4 by configuration
+    - Vulnerability scanners running Kerberos tests
+resolve_steps: |
+    1. Identify ClientAddress (source of bulk requests)
+    2. Force AES-only encryption on all targeted service accounts:
+       Set-ADUser -Identity <svc_acct> -KerberosEncryptionType AES128,AES256
+    3. Reset passwords of all targeted service accounts immediately
+    4. Hunt for Rubeus/Impacket on source host
+    5. Contact: github.com/ArcenumSystems
+level: high
+fields:
+    - ClientAddress
+    - ServiceName
+    - TicketEncryptionType
+    - TargetUserName

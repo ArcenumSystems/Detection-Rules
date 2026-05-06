@@ -1,0 +1,46 @@
+| ============================================================================ |
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC   |
+| Author      : Pradhyumna Ghogare                                             |
+| Organization: Arcenum Systems  (github.com/ArcenumSystems)                  |
+| Project     : Arcenum Universal Threat Detection Engine v3.0                 |
+| MITRE       : T1546.003 | Tactic: Persistence | Severity: CRITICAL           |
+| Actor       : APT41 (Winnti Group / Barium)                                  |
+| ============================================================================ |
+|                                                                               |
+| WHY THIS FIRES:                                                               |
+|   APT41 uses WMI event subscriptions to survive reboots and AV scans.        |
+|   __EventFilter + __EventConsumer + __FilterToConsumerBinding written         |
+|   together = persistent backdoor invisible to Task Scheduler.                 |
+|                                                                               |
+| TROUBLESHOOTING — IF RULE IS NOT FIRING:                                     |
+|   1. Confirm Sysmon EventCode 19/20/21 enabled in your Sysmon config.        |
+|   2. Verify index=windows is ingesting Sysmon logs.                          |
+|   3. Test: index=windows EventCode IN (19,20,21) | head 5                    |
+|   4. Deploy Sysmon with SwiftOnSecurity config if no results.                |
+|   5. False positives from SCCM: add admin hosts to exclusion filter.         |
+|                                                                               |
+| CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare            |
+| ============================================================================ |
+
+index=windows EventCode IN (19,20,21)
+| eval wmi_type=case(
+    EventCode=19, "EventFilter",
+    EventCode=20, "EventConsumer",
+    EventCode=21, "FilterToConsumerBinding"
+)
+| bucket _time span=5m
+| stats
+    dc(EventCode)       as subscription_components,
+    values(wmi_type)    as types_seen,
+    values(Name)        as subscription_names,
+    values(Destination) as consumers
+    by _time, host, user
+| where subscription_components >= 2
+| eval risk            = "CRITICAL"
+| eval mitre_technique = "T1546.003"
+| eval actor           = "APT41 (Winnti/Barium)"
+| eval description     = "WMI Event Subscription persistence - APT41 backdoor pattern"
+| eval copyright       = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| eval resolve         = "Isolate host > Get-WMIObject -NS root\subscription -Class __EventFilter > Delete malicious entries > Contact github.com/ArcenumSystems"
+| table _time, host, user, subscription_components, types_seen, subscription_names, consumers, risk, mitre_technique, actor, description, resolve
+| sort -_time

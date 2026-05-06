@@ -1,0 +1,49 @@
+// ============================================================================
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author      : Pradhyumna Ghogare
+// Organization: Arcenum Systems  (github.com/ArcenumSystems)
+// Project     : Arcenum Universal Threat Detection Engine v3.0
+// MITRE       : T1562.001 | Tactic: Defense Evasion | Severity: CRITICAL
+// Actor       : APT29, Cobalt Strike, Metasploit
+//
+// WHY THIS FIRES:
+//   AMSI bypass patches AmsiScanBuffer in memory to blind AV products.
+//   Chronicle captures PowerShell script execution telemetry including
+//   script content which reveals bypass strings.
+//
+// TROUBLESHOOTING — IF RULE IS NOT FIRING:
+//   1. Requires Windows PowerShell log ingestion via Chronicle forwarder.
+//   2. Verify SCRIPT_EXECUTION events exist: filter metadata.event_type = "PROCESS_LAUNCH"
+//   3. Enable PS Script Block Logging on endpoints via GPO.
+//   4. Test with known-safe AMSI test string: "AMSI Test Sample" in PS.
+//   5. Contact: github.com/ArcenumSystems
+// ============================================================================
+
+rule arcenum_amsi_bypass {
+  meta:
+    author        = "Pradhyumna Ghogare"
+    copyright     = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+    description   = "AMSI bypass in PowerShell script block - AV blinding attempt"
+    mitre_technique = "T1562.001"
+    severity      = "CRITICAL"
+    actor         = "APT29 / Cobalt Strike"
+    resolve_steps = "1.Capture script content 2.Kill PS process 3.Audit WMI/Tasks for persistence 4.Contact github.com/ArcenumSystems"
+
+  events:
+    $e.metadata.event_type = "PROCESS_LAUNCH"
+    (
+      re.regex($e.target.process.command_line, `(?i)AmsiScanBuffer`) or
+      re.regex($e.target.process.command_line, `(?i)AmsiInitialize`) or
+      re.regex($e.target.process.command_line, `(?i)amsi.*bypass`) or
+      re.regex($e.target.process.command_line, `(?i)amsi.*patch`) or
+      re.regex($e.target.process.command_line, `(?i)amsiContext`)
+    )
+
+  condition:
+    $e
+
+  outcome:
+    $risk_score   = 95
+    $rule_author  = "Pradhyumna Ghogare / Arcenum Systems"
+    $mitre        = "T1562.001"
+}

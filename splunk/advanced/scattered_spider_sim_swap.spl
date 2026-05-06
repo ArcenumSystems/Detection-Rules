@@ -1,0 +1,47 @@
+| ============================================================================ |
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC   |
+| Author      : Pradhyumna Ghogare                                             |
+| Organization: Arcenum Systems  (github.com/ArcenumSystems)                  |
+| Project     : Arcenum Universal Threat Detection Engine v3.0                 |
+| MITRE       : T1621,T1078 | Tactic: Initial Access | Severity: CRITICAL      |
+| Actor       : Scattered Spider (UNC3944) — MGM/Caesars 2023                  |
+| ============================================================================ |
+|                                                                               |
+| WHY THIS FIRES:                                                               |
+|   Scattered Spider calls telecom carriers to port victim's phone number.      |
+|   Post-SIM-swap: MFA codes go to attacker. Pattern = new device login +       |
+|   phone number change + immediate MFA success from new location.             |
+|                                                                               |
+| TROUBLESHOOTING — IF RULE IS NOT FIRING:                                     |
+|   1. Requires Okta/Azure AD/Duo log ingestion into Splunk.                   |
+|   2. Okta: Add Okta System Log sourcetype via Splunk Add-on for Okta.        |
+|   3. Azure AD: Connect via Azure Monitor / Event Hub to Splunk.              |
+|   4. Test Okta: index=auth sourcetype=okta | head 5                          |
+|   5. Adjust geo_distance threshold based on your org's user travel patterns. |
+|                                                                               |
+| CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare            |
+| ============================================================================ |
+
+index=auth sourcetype IN ("okta","azure_ad","duo","ping_identity")
+| eval user          = coalesce(actor.alternateId, userPrincipalName, username)
+| eval event_type    = coalesce(eventType, operationName, event_type)
+| eval src_ip        = coalesce(client.ipAddress, IPAddress, src_ip)
+| eval device_id     = coalesce(client.device, deviceId, device)
+| bucket _time span=30m
+| stats
+    dc(src_ip)       as distinct_ips,
+    dc(device_id)    as distinct_devices,
+    values(event_type) as events,
+    values(src_ip)   as ip_list,
+    count            as total_events
+    by _time, user
+| where distinct_devices > 2 AND distinct_ips > 2
+    AND match(tostring(events), "(?i)(phone.*change|mfa.*enroll|authenticator.*add|success|login)")
+| eval risk            = "CRITICAL"
+| eval mitre_technique = "T1621,T1078"
+| eval actor           = "Scattered Spider (UNC3944)"
+| eval description     = "SIM swap indicators - new device + phone change + MFA success from new location"
+| eval copyright       = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| eval resolve         = "Suspend user account > Call user on known-good channel > Revoke all sessions > Check telecom for port request > Contact github.com/ArcenumSystems"
+| table _time, user, distinct_ips, distinct_devices, events, ip_list, risk, mitre_technique, actor, description, resolve
+| sort -_time

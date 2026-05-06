@@ -1,0 +1,47 @@
+// ============================================================================
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author      : Pradhyumna Ghogare
+// Organization: Arcenum Systems  (github.com/ArcenumSystems)
+// Project     : Arcenum Universal Threat Detection Engine v3.0
+// MITRE       : T1562.001 | Tactic: Defense Evasion | Severity: CRITICAL
+// Actor       : APT29, Cobalt Strike, Metasploit
+// ============================================================================
+//
+// WHY THIS FIRES:
+//   AMSI bypass patches AmsiScanBuffer in memory to blind Windows AV from
+//   scanning PowerShell scripts. Script Block Logging (Event 4104) captures
+//   the bypass attempt before execution completes.
+//
+// TROUBLESHOOTING — IF RULE IS NOT FIRING:
+//   1. Verify SecurityEvent table has EventID=4104 entries:
+//      SecurityEvent | where EventID == 4104 | take 5
+//   2. If empty: enable PowerShell Script Block Logging via GPO.
+//      Path: Computer Config > Admin Templates > Windows Components >
+//            Windows PowerShell > Turn on Script Block Logging
+//   3. Ensure Microsoft Sentinel data connector "Security Events" is active.
+//   4. Check Log Analytics workspace retention (min 90 days recommended).
+//   5. False positives: Security tools like CyberArk may trigger — add
+//      their process names to the exclusion filter below.
+//
+// CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare
+// ============================================================================
+
+SecurityEvent
+| where EventID == 4104
+| where ScriptBlockText has_any (
+    "AmsiScanBuffer", "AmsiInitialize", "amsiContext",
+    "amsi bypass", "amsi patch", "amsi disable",
+    "VirtualProtect", "WriteProcessMemory"
+)
+| where not(Account has_any ("CyberArk","CrowdStrike","MsMpEng"))
+| extend
+    Risk              = "CRITICAL",
+    MitreTechnique    = "T1562.001",
+    Actor             = "APT29 / Cobalt Strike",
+    Description       = "AMSI bypass in PowerShell script block - AV blinding attempt",
+    ResolveSteps      = "1.Capture full script block 2.Kill PowerShell PID 3.Audit scheduled tasks/WMI 4.Contact github.com/ArcenumSystems",
+    ArcenumCopyright  = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| project
+    TimeGenerated, Computer, Account, ScriptBlockText,
+    Risk, MitreTechnique, Actor, Description, ResolveSteps
+| order by TimeGenerated desc

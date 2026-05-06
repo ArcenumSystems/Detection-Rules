@@ -1,0 +1,38 @@
+# ============================================================================
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author      : Pradhyumna Ghogare
+# Organization: Arcenum Systems  (github.com/ArcenumSystems)
+# Project     : Arcenum Universal Threat Detection Engine v3.0
+# MITRE       : T1562.001 | Tactic: Defense Evasion | Severity: CRITICAL
+# Actor       : APT29, Cobalt Strike, Metasploit
+# Platform    : CrowdStrike Falcon — Investigate > Event Search (FQL)
+# ============================================================================
+#
+# WHY THIS FIRES:
+#   AMSI bypass patches AmsiScanBuffer in memory to blind AV/EDR scanning.
+#   Falcon's script content inspection captures the bypass string even when
+#   obfuscated, because it inspects post-deobfuscation execution context.
+#
+# TROUBLESHOOTING — IF RULE IS NOT FIRING:
+#   1. Ensure Falcon sensor is version 6.x+ for script content visibility.
+#   2. Verify "Script-Based Execution Monitoring" is ON in prevention policy.
+#   3. Test query: event_simpleName=ScriptControlScanTelemetry | limit 5
+#   4. If no results: check policy allows script telemetry for your host group.
+#   5. For encoded/obfuscated bypass: Falcon decodes before matching — no change needed.
+#
+# CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare
+# ============================================================================
+
+event_simpleName=ScriptControlScanTelemetry
+| ScriptContent="*AmsiScanBuffer*"
+  OR ScriptContent="*AmsiInitialize*"
+  OR ScriptContent="*amsi bypass*"
+  OR ScriptContent="*amsi patch*"
+  OR ScriptContent="*amsiContext*"
+| eval Risk="CRITICAL"
+| eval MitreTechnique="T1562.001"
+| eval Actor="APT29 / Cobalt Strike"
+| eval Description="AMSI bypass attempt in PowerShell - AV blinding"
+| eval ResolveSteps="1.Capture ScriptContent 2.Kill PowerShell PID 3.Audit persistence (WMI/Tasks) 4.Contact github.com/ArcenumSystems"
+| eval ArcenumCopyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table timestamp, ComputerName, UserName, ScriptContent, Risk, MitreTechnique, Actor, Description, ResolveSteps

@@ -1,0 +1,44 @@
+// ============================================================================
+// © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+// Author      : Pradhyumna Ghogare
+// Organization: Arcenum Systems  (github.com/ArcenumSystems)
+// Project     : Arcenum Universal Threat Detection Engine v3.0
+// MITRE       : T1003.001 | Tactic: Credential Access | Severity: CRITICAL
+// Actor       : APT29, Mimikatz, Cobalt Strike
+//
+// WHY THIS FIRES:
+//   Non-system process accessing LSASS memory = credential dumping attempt.
+//   Windows Defender/MsMpEng and known system processes are excluded.
+//
+// TROUBLESHOOTING — IF RULE IS NOT FIRING:
+//   1. Requires process access events from Sysmon (EventID 10) or EDR.
+//   2. Confirm Chronicle ingests Windows Sysmon logs.
+//   3. Test: filter metadata.event_type = "PROCESS_OPEN" | limit 5
+//   4. If no PROCESS_OPEN events: check Windows log forwarder config.
+//   5. Contact: github.com/ArcenumSystems
+// ============================================================================
+
+rule arcenum_lsass_memory_access {
+  meta:
+    author        = "Pradhyumna Ghogare"
+    copyright     = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+    description   = "LSASS process memory access - credential dumping attempt"
+    mitre_technique = "T1003.001"
+    severity      = "CRITICAL"
+    actor         = "APT29 / Mimikatz / Cobalt Strike"
+    resolve_steps = "1.Identify source process 2.Kill process 3.Check for dumped cred files 4.Reset all domain passwords 5.Contact github.com/ArcenumSystems"
+
+  events:
+    $e.metadata.event_type = "PROCESS_OPEN"
+    re.regex($e.target.process.file.full_path, `(?i)lsass\.exe`)
+    not re.regex($e.principal.process.file.full_path,
+      `(?i)(MsMpEng|WindowsDefender|csrss|wininit|services|System)`)
+
+  condition:
+    $e
+
+  outcome:
+    $risk_score   = 99
+    $rule_author  = "Pradhyumna Ghogare / Arcenum Systems"
+    $mitre        = "T1003.001"
+}

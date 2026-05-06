@@ -1,0 +1,48 @@
+[rule]
+# ============================================================================
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author      : Pradhyumna Ghogare
+# Organization: Arcenum Systems  (github.com/ArcenumSystems)
+# Project     : Arcenum Universal Threat Detection Engine v3.0
+# MITRE       : T1562.001 | Tactic: Defense Evasion | Severity: CRITICAL
+# Actor       : APT29, Cobalt Strike, Metasploit
+#
+# WHY THIS FIRES:
+#   AMSI bypass patches AmsiScanBuffer to blind Windows Defender/AV.
+#   PowerShell script block logging captures bypass strings pre-execution.
+#
+# TROUBLESHOOTING — IF RULE IS NOT FIRING:
+#   1. Requires winlog.event_id: 4104 (PowerShell Script Block).
+#   2. Enable Winlogbeat with PowerShell module or Elastic Agent + Windows integration.
+#   3. Test: GET /logs-*/_search with query: winlog.event_id: 4104
+#   4. Ensure "Script Block Logging" is enabled via GPO.
+#   5. Contact: github.com/ArcenumSystems
+# ============================================================================
+
+name         = "Arcenum - AMSI Bypass Detected in PowerShell"
+language     = "eql"
+severity     = "critical"
+risk_score   = 95
+author       = ["Pradhyumna Ghogare / Arcenum Systems"]
+tags         = ["T1562.001", "Defense Evasion", "APT29", "Arcenum Systems"]
+description  = "AMSI bypass detected in PowerShell script block. Attacker is blinding Windows AV to execute malicious code."
+
+query = '''
+any where event.code == "4104" and
+(
+    winlog.event_data.ScriptBlockText like~ "*AmsiScanBuffer*" or
+    winlog.event_data.ScriptBlockText like~ "*AmsiInitialize*" or
+    winlog.event_data.ScriptBlockText like~ "*amsi bypass*" or
+    winlog.event_data.ScriptBlockText like~ "*amsi patch*" or
+    winlog.event_data.ScriptBlockText like~ "*amsiContext*"
+)
+'''
+
+[[rule.threat]]
+framework = "MITRE ATT&CK"
+[[rule.threat.technique]]
+id   = "T1562"
+name = "Impair Defenses"
+[[rule.threat.technique.subtechnique]]
+id   = "T1562.001"
+name = "Disable or Modify Tools"

@@ -1,0 +1,51 @@
+title: Arcenum - MFA Fatigue Attack - Push Spam to Approval
+id: arcenum-006-mfa-fatigue
+status: stable
+description: |
+    Detects MFA fatigue (MFA bombing) attack where attacker sends excessive
+    MFA push notifications hoping user approves from fatigue.
+    Pattern: >10 MFA denials followed by approval = MGM/Caesars 2023 pattern.
+    Actor: Scattered Spider (UNC3944), Lapsus$
+    © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+author: Pradhyumna Ghogare / Arcenum Systems
+date: 2024/01/01
+references:
+    - https://github.com/ArcenumSystems
+    - https://github.com/PradhyumnaGhogare
+    - https://attack.mitre.org/techniques/T1621/
+tags:
+    - attack.credential_access
+    - attack.t1621
+    - arcenum.critical
+    - actor.scattered_spider
+    - actor.lapsus
+logsource:
+    product: okta
+    service: system
+    definition: Okta System Log must be ingested. Also supports Azure AD SignInLogs.
+detection:
+    selection_denied:
+        eventType: 'user.authentication.auth_via_mfa'
+        outcome.result: 'FAILURE'
+    selection_approved:
+        eventType: 'user.authentication.auth_via_mfa'
+        outcome.result: 'SUCCESS'
+    condition: |
+        selection_denied (count > 10) followed by selection_approved
+        within 10m grouped by actor.alternateId
+falsepositives:
+    - Users who accidentally deny multiple times before approving
+    - Automated testing systems
+resolve_steps: |
+    1. Suspend user account IMMEDIATELY: okta admin > user > suspend
+    2. Call user via known-good phone number to verify if they approved
+    3. Revoke all active sessions for the user
+    4. Check source IPs for VPN/proxy indicators
+    5. Contact user's telecom to check for SIM port requests
+    6. Contact: github.com/ArcenumSystems
+level: critical
+fields:
+    - actor.alternateId
+    - client.ipAddress
+    - outcome.result
+    - eventType

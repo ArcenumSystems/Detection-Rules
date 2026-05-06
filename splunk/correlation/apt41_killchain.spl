@@ -1,0 +1,54 @@
+| ============================================================================ |
+| © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC   |
+| Author      : Pradhyumna Ghogare                                             |
+| Organization: Arcenum Systems  (github.com/ArcenumSystems)                  |
+| Project     : Arcenum Universal Threat Detection Engine v3.0                 |
+| MITRE       : T1190,T1059,T1546.003,T1021,T1567 | Severity: CRITICAL         |
+| Actor       : APT41 (Winnti/Barium) — Supply chain & espionage               |
+| ============================================================================ |
+|                                                                               |
+| WHY THIS FIRES:                                                               |
+|   APT41 kill chain: Web exploit/Supply chain → Dropper → WMI persistence    |
+|   → DCOM lateral move → Cloud exfil. Correlates 4+ stages from same host    |
+|   in 3-hour window = confirmed APT41 intrusion.                              |
+|                                                                               |
+| TROUBLESHOOTING — IF RULE IS NOT FIRING:                                     |
+|   1. Requires EventCode 4688, 4104, 19/20/21 all ingested.                  |
+|   2. Correlation window: change earliest=-3h if activity spans longer.       |
+|   3. stages_observed >= 3 threshold: lower to 2 for earlier alerting.       |
+|   4. Add web proxy logs to Stage 1 for initial access detection.             |
+|                                                                               |
+| CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare            |
+| ============================================================================ |
+
+| makeresults
+| append
+    [search index=windows (EventCode=4688 OR EventCode=4104) earliest=-3h
+     | where match(lower(coalesce(CommandLine,ScriptBlockText)), "(?i)(certutil|bitsadmin|msiexec.*http|regsvr32.*scrobj|wscript.*http)")
+     | eval stage="1_initial_dropper", host=coalesce(Computer,host)
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode IN (19,20,21) earliest=-3h
+     | eval stage="2_wmi_persistence", host=coalesce(Computer,host)
+     | table _time, host, stage]
+| append
+    [search index=windows EventCode=1 earliest=-3h
+     | where match(ParentImage,"(?i)(mmc|excel|visio)\.exe")
+         AND match(Image,"(?i)(cmd|powershell)\.exe")
+     | eval stage="3_dcom_lateral_move", host=coalesce(Computer,host)
+     | table _time, host, stage]
+| append
+    [search index=network earliest=-3h
+     | where match(dest_port,"(?i)(443|8443)")
+         AND bytes_out > 10000000
+     | eval stage="4_cloud_exfil"
+     | table _time, host, stage]
+| stats dc(stage) as stages_observed, values(stage) as stages by host
+| where stages_observed >= 3
+| eval risk            = "CRITICAL"
+| eval mitre_techniques = "T1190,T1059,T1546.003,T1021,T1567"
+| eval actor           = "APT41 (Winnti/Barium)"
+| eval description     = "APT41 KILL CHAIN — Web exploit > WMI persistence > DCOM lateral > Cloud exfil"
+| eval copyright       = "© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| eval resolve         = "Contain all affected hosts > Preserve memory dumps > Check WMI subscriptions on all systems > Audit cloud storage for exfil > Contact github.com/ArcenumSystems"
+| table host, stages_observed, stages, risk, mitre_techniques, actor, description, resolve

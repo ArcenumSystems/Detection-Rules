@@ -1,0 +1,38 @@
+# ============================================================================
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author      : Pradhyumna Ghogare
+# Organization: Arcenum Systems  (github.com/ArcenumSystems)
+# Project     : Arcenum Universal Threat Detection Engine v3.0
+# MITRE       : T1546.003 | Tactic: Persistence | Severity: CRITICAL
+# Actor       : APT41 (Winnti/Barium)
+# Platform    : CrowdStrike Falcon — Investigate > Event Search (FQL)
+# ============================================================================
+#
+# WHY THIS FIRES:
+#   APT41 uses WMI event subscriptions for reboot-persistent backdoors.
+#   Falcon captures WMI subscription creation events natively.
+#
+# TROUBLESHOOTING — IF RULE IS NOT FIRING:
+#   1. Requires Falcon sensor version 6.20+ for WMI telemetry.
+#   2. Test: event_simpleName=WmiActivityEvent | limit 5
+#   3. If empty: enable WMI activity collection in sensor config.
+#   4. Legitimate WMI: SCCM, monitoring agents — add their hostnames to filter.
+#
+# CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare
+# ============================================================================
+
+event_simpleName=WmiActivityEvent
+| Operation="CreateInstance"
+| TargetClass="__EventFilter"
+  OR TargetClass="__EventConsumer"
+  OR TargetClass="__FilterToConsumerBinding"
+| bucket timestamp span=5m
+| stats dc(TargetClass) as WMIComponents, values(TargetClass) as Types by ComputerName, UserName, timestamp
+| WMIComponents >= 2
+| eval Risk="CRITICAL"
+| eval MitreTechnique="T1546.003"
+| eval Actor="APT41 (Winnti/Barium)"
+| eval Description="WMI Event Subscription persistence - APT41 backdoor"
+| eval ResolveSteps="1.Run: Get-WMIObject -NS root\\subscription -Class __EventFilter 2.Delete malicious subscriptions 3.Isolate host 4.Contact github.com/ArcenumSystems"
+| eval ArcenumCopyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table timestamp, ComputerName, UserName, WMIComponents, Types, Risk, MitreTechnique, Actor, Description, ResolveSteps

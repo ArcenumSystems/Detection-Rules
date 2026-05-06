@@ -1,0 +1,52 @@
+title: Arcenum - DCSync Attack - AD Credential Dump via Replication
+id: arcenum-004-dcsync-attack
+status: stable
+description: |
+    Detects DCSync attack where non-DC machine exercises AD replication rights
+    to dump all NTLM password hashes without touching LSASS memory.
+    Covers Mimikatz lsadump::dcsync, Impacket secretsdump, and APT29 tooling.
+    © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+author: Pradhyumna Ghogare / Arcenum Systems
+date: 2024/01/01
+references:
+    - https://github.com/ArcenumSystems
+    - https://github.com/PradhyumnaGhogare
+    - https://attack.mitre.org/techniques/T1003/006/
+tags:
+    - attack.credential_access
+    - attack.t1003.006
+    - arcenum.critical
+    - actor.apt29
+    - actor.apt28
+    - actor.mimikatz
+logsource:
+    product: windows
+    service: security
+    definition: Directory Service Access auditing must be enabled on DCs
+detection:
+    selection:
+        EventID: 4662
+        Properties|contains:
+            - '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2'
+            - '1131f6ab-9c07-11d1-f79f-00c04fc2dcd2'
+            - '89e95b76-444d-4c62-991a-0facbeda640c'
+    filter_machine_accounts:
+        SubjectUserName|endswith: '$'
+    condition: selection and not filter_machine_accounts
+falsepositives:
+    - Azure AD Connect sync account
+    - Legitimate AD replication services
+resolve_steps: |
+    1. Identify source machine and user from SubjectUserName/SubjectDomainName
+    2. Check if account legitimately has DS-Replication-Get-Changes-All right
+    3. If unauthorized: Isolate host immediately
+    4. Reset krbtgt password TWICE (invalidates all Kerberos tickets)
+    5. Reset all privileged account passwords
+    6. Contact: github.com/ArcenumSystems
+level: critical
+fields:
+    - SubjectUserName
+    - SubjectDomainName
+    - ObjectName
+    - Properties
+    - Computer

@@ -1,0 +1,55 @@
+title: Arcenum - AMSI Bypass in PowerShell Script Block
+id: arcenum-003-amsi-bypass
+status: stable
+description: |
+    Detects AMSI bypass attempts in PowerShell Script Block logs (Event 4104).
+    AMSI (Antimalware Scan Interface) bypass patches AmsiScanBuffer to blind
+    Windows Defender and AV products from inspecting script content.
+    Based on APT29/Cobalt Strike/Metasploit documented TTPs.
+    © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+author: Pradhyumna Ghogare / Arcenum Systems
+date: 2024/01/01
+modified: 2024/06/01
+references:
+    - https://github.com/ArcenumSystems
+    - https://github.com/PradhyumnaGhogare
+    - https://attack.mitre.org/techniques/T1562/001/
+tags:
+    - attack.defense_evasion
+    - attack.t1562.001
+    - arcenum.critical
+    - actor.apt29
+    - actor.cobalt_strike
+logsource:
+    product: windows
+    category: ps_script
+    definition: Script Block Logging must be enabled via GPO
+detection:
+    selection:
+        EventID: 4104
+        ScriptBlockText|contains:
+            - 'AmsiScanBuffer'
+            - 'AmsiInitialize'
+            - 'amsiContext'
+            - 'amsi bypass'
+            - 'amsi patch'
+            - 'amsi disable'
+    filter_legitimate:
+        ScriptBlockText|contains:
+            - 'CyberArk'
+            - 'SentinelOne'
+    condition: selection and not filter_legitimate
+falsepositives:
+    - Security research tools
+    - Some EDR products during self-test
+resolve_steps: |
+    1. Capture full ScriptBlockText from event
+    2. Kill offending PowerShell process (Get-Process powershell | Stop-Process)
+    3. Audit WMI subscriptions and Scheduled Tasks for persistence
+    4. Check parent process for initial access vector
+    5. Contact: github.com/ArcenumSystems
+level: critical
+fields:
+    - ScriptBlockText
+    - Computer
+    - UserID

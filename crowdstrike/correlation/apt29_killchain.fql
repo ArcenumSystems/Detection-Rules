@@ -1,0 +1,52 @@
+# ============================================================================
+# © 2024 Pradhyumna Ghogare / Arcenum Systems — PROPRIETARY DETECTION LOGIC
+# Author      : Pradhyumna Ghogare
+# Organization: Arcenum Systems  (github.com/ArcenumSystems)
+# Project     : Arcenum Universal Threat Detection Engine v3.0
+# MITRE       : T1566,T1059,T1003,T1021,T1041 | Severity: CRITICAL
+# Actor       : APT29 (Cozy Bear)
+# Platform    : CrowdStrike Falcon — Investigate > Event Search (FQL)
+# ============================================================================
+#
+# WHY THIS FIRES:
+#   APT29 full kill chain detected across multiple Falcon telemetry events:
+#   PS Dropper > LSASS access > Lateral movement > Exfiltration.
+#   3+ stages on same host in 2 hours = confirmed APT29 intrusion.
+#
+# TROUBLESHOOTING — IF RULE IS NOT FIRING:
+#   1. Falcon correlation requires Falcon Fusion or custom SIEM integration.
+#   2. Run each stage query individually first to confirm data exists.
+#   3. Adjust span=2h to span=4h if APT29 is operating slowly.
+#
+# CONTACT: github.com/ArcenumSystems | github.com/PradhyumnaGhogare
+# ============================================================================
+
+event_simpleName IN (ScriptControlScanTelemetry, ProcessRollup2, NetworkConnectIP4)
+| eval stage=case(
+    event_simpleName="ScriptControlScanTelemetry"
+        AND (ScriptContent="*IEX*" OR ScriptContent="*DownloadString*" OR ScriptContent="*EncodedCommand*"),
+    "1_PS_Dropper",
+    event_simpleName="ProcessRollup2"
+        AND TargetProcessName="*lsass.exe*"
+        AND GrantedAccess IN ("0x1010","0x1410","0x1fffff"),
+    "2_LSASS_Dump",
+    event_simpleName="ProcessRollup2"
+        AND (CommandLine="*psexec*" OR CommandLine="*wmic*process*create*" OR CommandLine="*winrm*"),
+    "3_Lateral_Move",
+    event_simpleName="NetworkConnectIP4"
+        AND RemotePort IN ("443","8443","8080")
+        AND BytesSent > 10000000,
+    "4_Exfil",
+    true(), null()
+)
+| where isnotnull(stage)
+| bucket timestamp span=2h
+| stats dc(stage) as StagesObserved, values(stage) as Stages by ComputerName, timestamp
+| where StagesObserved >= 3
+| eval Risk="CRITICAL"
+| eval MitreTechniques="T1566,T1059,T1003,T1021,T1041"
+| eval Actor="APT29 (Cozy Bear)"
+| eval Description="APT29 KILL CHAIN — Multi-stage intrusion confirmed by Falcon telemetry"
+| eval ResolveSteps="1.Network isolate host 2.Dump full Falcon process tree 3.Reset all privileged creds 4.Contact github.com/ArcenumSystems"
+| eval ArcenumCopyright="© 2024 Pradhyumna Ghogare / Arcenum Systems"
+| table timestamp, ComputerName, StagesObserved, Stages, Risk, MitreTechniques, Actor, Description, ResolveSteps
