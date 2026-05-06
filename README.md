@@ -1,5 +1,12 @@
 <div align="center">
-  
+
+  <img src="https://img.shields.io/github/stars/ArcenumSystems/Detection-Rules?style=for-the-badge&color=yellow&logo=github" />
+  <img src="https://img.shields.io/github/forks/ArcenumSystems/Detection-Rules?style=for-the-badge&color=blue&logo=github" />
+  <img src="https://img.shields.io/github/issues/ArcenumSystems/Detection-Rules?style=for-the-badge&color=red&logo=github" />
+  <img src="https://img.shields.io/github/last-commit/ArcenumSystems/Detection-Rules?style=for-the-badge&color=green&logo=github" />
+
+  <br><br>
+
   <!-- Platform & Language Badges -->
   <img src="https://img.shields.io/badge/Splunk-SPL-000000?style=for-the-badge&logo=splunk&logoColor=white" />
   <img src="https://img.shields.io/badge/Sentinel-KQL-0078D4?style=for-the-badge&logo=microsoft&logoColor=white" />
@@ -7,7 +14,6 @@
   <img src="https://img.shields.io/badge/Chronicle-YARA--L-4285F4?style=for-the-badge&logo=google&logoColor=white" />
   <img src="https://img.shields.io/badge/Elastic-EQL-005571?style=for-the-badge&logo=elasticsearch&logoColor=white" />
   <img src="https://img.shields.io/badge/Sigma-Universal-005E9C?style=for-the-badge" />
-  
 
   <br><br>
 
@@ -16,10 +22,20 @@
   <img src="https://img.shields.io/badge/Architecture-Advanced_%26_Correlation-22c55e?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Coverage-6_Platforms-a855f7?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Version-3.0.0-f59e0b?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Rules-60%2B-ff4444?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Threat_Actors-8-6366f1?style=for-the-badge" />
 
 </div>
 
+<br>
+
+<div align="center">
+
 # Arcenum Systems — Universal SIEM Detection Rules
+
+**If this project helped you, please ⭐ star the repo — it helps others find it!**
+
+</div>
 
 > **Author:** Pradhyumna Ghogare  
 > **Copyright:** © 2024 Pradhyumna Ghogare / Arcenum Systems  
@@ -50,25 +66,25 @@ Each rule includes:
 ## Repository Structure
 
 ```
-Detection-Rules/
+arcenum-systems-detection-rules/
 ├── splunk/
-│   ├── advanced/          # Single-event SPL detections (18 rules)
-│   └── correlation/       # Multi-stage kill chain correlations (5 rules)
+│   ├── advanced/          # Single-event SPL detections
+│   └── correlation/       # Multi-stage kill chain correlations
 ├── sentinel/
-│   ├── advanced/          # KQL analytics rules (8 rules)
-│   └── correlation/       # Multi-stage KQL correlations (3 rules)
+│   ├── advanced/          # KQL analytics rules
+│   └── correlation/       # Multi-stage KQL correlations
 ├── crowdstrike/
-│   ├── advanced/          # CrowdStrike FQL detections (5 rules)
-│   └── correlation/       # FQL kill chain correlations (2 rules)
+│   ├── advanced/          # CrowdStrike FQL detections
+│   └── correlation/       # FQL kill chain correlations
 ├── chronicle/
-│   ├── advanced/          # YARA-L single detections (4 rules)
-│   └── correlation/       # YARA-L multi-event correlations (2 rules)
+│   ├── advanced/          # YARA-L single detections
+│   └── correlation/       # YARA-L multi-event correlations
 ├── elastic/
-│   ├── advanced/          # EQL detection rules (5 rules)
-│   └── correlation/       # EQL sequence correlations (1 rule)
+│   ├── advanced/          # EQL detection rules
+│   └── correlation/       # EQL sequence correlations
 └── sigma/
-    ├── advanced/          # Universal Sigma rules (7 rules)
-    └── correlation/       # Sigma correlation rules (1 rule)
+    ├── advanced/          # Universal Sigma rules
+    └── correlation/       # Sigma correlation rules
 ```
 
 ---
@@ -100,22 +116,17 @@ Detection-Rules/
 | Network | DNS tunneling, C2 beaconing | Brute force → C2 |
 | Identity | MFA fatigue, SIM swap | — |
 | Container | cgroup escape, Docker socket abuse | — |
-| Lateral Movement | DCOM (FIN7), WMI exec | Lazarus kill chain |
+| Lateral Movement | DCOM (FIN7) | Lazarus kill chain |
 | Collection | Clipboard hijack (Lazarus) | — |
 
 ---
 
 ## Troubleshooting
 
-Every rule contains a `TROUBLESHOOTING` section covering:
-1. Required audit policies / GPO settings
-2. Data source verification commands
-3. Threshold tuning guidance
-4. False positive management
-
-**If a rule is still not firing after following troubleshooting steps:**  
-→ Open an issue at [github.com/ArcenumSystems/Detection-Rules](https://github.com/ArcenumSystems/Detection-Rules)  
-→ Contact: [github.com/PradhyumnaGhogare](https://github.com/PradhyumnaGhogare)
+Every rule contains a `TROUBLESHOOTING` section. If a rule is not firing:
+1. Follow the in-rule troubleshooting steps first
+2. Open an issue at [github.com/ArcenumSystems/Detection-Rules](https://github.com/ArcenumSystems/Detection-Rules)
+3. Contact: [github.com/PradhyumnaGhogare](https://github.com/PradhyumnaGhogare)
 
 ---
 
@@ -123,12 +134,12 @@ Every rule contains a `TROUBLESHOOTING` section covering:
 
 ### Splunk
 ```
-Settings → Searches, Reports and Alerts → New Search → Paste .spl content
+Settings → Searches, Reports and Alerts → Import .spl file
 ```
 
 ### Microsoft Sentinel
 ```
-Analytics → Create → Scheduled query rule → Paste .kql content
+Analytics → Create → Import rule → Upload .kql file
 ```
 
 ### CrowdStrike Falcon
@@ -138,7 +149,7 @@ Investigate → Event Search → Paste .fql query
 
 ### Google Chronicle
 ```
-Detection Engine → Rules → New Rule → Paste .yaral content
+Detection Engine → Rules → New Rule → Import .yaral file
 ```
 
 ### Elastic SIEM
@@ -146,12 +157,11 @@ Detection Engine → Rules → New Rule → Paste .yaral content
 Security → Rules → Import rules → Upload .toml file
 ```
 
-### Sigma (Universal — compile to any SIEM)
+### Sigma (Universal)
 ```bash
-pip install sigma-cli
-sigma convert -t splunk  sigma/advanced/lsass_access.yml
-sigma convert -t sentinel sigma/advanced/lsass_access.yml
-sigma convert -t elasticsearch sigma/advanced/lsass_access.yml
+pip install sigmatools
+sigmac -t splunk sigma/advanced/lsass_access.yml
+sigmac -t sentinel sigma/advanced/lsass_access.yml
 ```
 
 ---
